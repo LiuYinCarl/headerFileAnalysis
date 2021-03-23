@@ -1,14 +1,14 @@
 #include <assert.h>
-#include "headerFileAnalysis.h"
-
+#include <iostream>
 #include <sstream>
 #include <iomanip>
 #include <numeric>
 #include <algorithm>
 #include <queue>
 #include <regex>
+#include <string.h>
 
-
+#include "headerFileAnalysis.h"
 
 
 Node::Node() :
@@ -28,7 +28,7 @@ Node::~Node() {
     child_nodes.clear();
 }
 
-bool Node::set_node_name(const std::string name) {
+bool Node::set_node_name(const std::string& name) {
     if (name.size() == 0 || name.size() > 100) {
         return false;
     }
@@ -76,7 +76,7 @@ bool Graph::add_node(Node* node) {
     uint32_t node_id = node->get_node_id();
     
     auto node_iter = node_map.find(node_id);
-    assert(node_iter !== node_map.end());
+    assert(node_iter != node_map.end());
     const auto [it, success] = node_map.insert({node_id, node});
     assert(success);
     const auto [it2, success2] = node_name_map.insert({node->get_node_name(), node});
@@ -87,25 +87,25 @@ bool Graph::add_node(Node* node) {
 
 Node* Graph::get_node_by_id(uint32_t id) {
     assert(id > 0);
-    auto node_iter = node_map.find(node_id);
+    auto node_iter = node_map.find(id);
     if (node_iter == node_map.end())
         return nullptr;
     else
-        return *node_iter;
+        return node_iter->second;
 }
 
 Node* Graph::get_node_by_name(const std::string& name) {
-    assert(name.szie() > 0);
+    assert(name.size() > 0);
     auto node_iter = node_name_map.find(name);
     if (node_iter == node_name_map.end())
         return nullptr;
     else
-        return *node_iter;
+        return node_iter->second;
 }
 
 bool Graph::add_record(Node* node, std::string& parent_name) {
-    assert(node_name.size() > 0);
-    assert(parent_node_name.size() > 0);
+    assert(node != nullptr);
+    assert(parent_name.size() > 0);
     
     // 1. find parent node. if parent node not exist, create it
     Node* parent_node = get_node_by_name(parent_name);
@@ -120,39 +120,49 @@ bool Graph::add_record(Node* node, std::string& parent_name) {
     return true;
 }
 
-
-WalkMan::WalkMan() {
-
+bool Graph::gen_dot_file() {
+    
 }
 
-WalkMan::WalkMan(const std::string& dir) {
-    base_dir(dir);
+
+WalkMan::WalkMan() :
+    flag1(false),
+    flag2(false),
+    flag3(false)
+    {}
+
+WalkMan::WalkMan(const std::string& dir) :
+    flag1(false),
+    flag2(false),
+    flag3(false) {
+    base_dir = fs::path(dir);
 }
 
 WalkMan::~WalkMan() {
 
 }
 
-bool WalkMan::check_extension(fs::path& extension) { 
-    swtich (extension.c_str()) {
-        case ".h":
-        case ".c":
-        case ".cpp":
-        case ".hpp":
-            return true;
-        default:
-            return false;
+bool WalkMan::check_extension(fs::path& extension) {
+    const char* c = extension.c_str();
+    if (strcmp(c, ".h") == 0
+     || strcmp(c, ".c") == 0
+     || strcmp(c, ".cpp") == 0
+     || strcmp(c, ".hpp") == 0) {
+        return true;
     }
+        return false;
 }
 
 void WalkMan::walk_dir(fs::path base_dir) {
-    // Ê¹ÓÃµü´úĞ´·¨¶ø²»ÊÇµİ¹éĞ´·¨
-    std::queue<fs::path>dirs{base_dir};
+    // ä½¿ç”¨è¿­ä»£å†™æ³•è€Œä¸æ˜¯é€’å½’å†™æ³•
+    std::queue<fs::path>dirs;
+    dirs.push(base_dir);
+    
     std::vector<fs::path> files;
     fs::path cur_dir;
 
-    while (!tmp_dir.empty()) {
-        cur_dir = std::move(dirs.frone());
+    while (!dirs.empty()) {
+        cur_dir = std::move(dirs.front());
         dirs.pop();
 
         for (auto& entry : fs::directory_iterator{cur_dir}) {
@@ -171,6 +181,8 @@ void WalkMan::walk_dir(fs::path base_dir) {
                                 std::make_move_iterator(files.end()));
         files.clear();
     }
+    // set finish flag
+    flag1 = true;
 }
 
 
@@ -192,35 +204,72 @@ std::vector<std::string>&& WalkMan::get_include_lines(const fs::path& path) {
 
 
 void WalkMan::analysis_file() {
-    // ¶ÁÈ¡Ò»¸öÎÄ¼şÈ»ºó·ÖÎö³öÍ·ÎÄ¼şÒıÓÃ
+    // è¯»å–ä¸€ä¸ªæ–‡ä»¶ç„¶ååˆ†æå‡ºå¤´æ–‡ä»¶å¼•ç”¨
     fs::path path;
 
     while (true) {
         const std::lock_guard<std::mutex> lk(m1);
-        path = std::move(file_path_queue.front());
-        file_path_queue.pop();
-        lock.~lock_guard();
+        if (!file_path_queue.empty()) {
+            path = std::move(file_path_queue.front());
+            file_path_queue.pop();
+        } else {
+            if (flag1 == true) {
+                flag2 = true;
+                break;
+            }
+                
+        }
+        lk.~lock_guard();
 
-        // vector µÚÒ»¸öÔªËØÊÇÔ´ÎÄ¼şµÄÃû×Ö£¬ÆäËûÔªËØÊÇÕâ¸öÔ´ÎÄ¼şÒıÓÃµÄÍ·ÎÄ¼ş
-        vector<std::string> include_info = get_include_lines(path);
+        // vector ç¬¬ä¸€ä¸ªå…ƒç´ æ˜¯æºæ–‡ä»¶çš„åå­—ï¼Œå…¶ä»–å…ƒç´ æ˜¯è¿™ä¸ªæºæ–‡ä»¶å¼•ç”¨çš„å¤´æ–‡ä»¶
+        std::vector<std::string> include_info = get_include_lines(path);
 
         const std::lock_guard<std::mutex> lk2(m2);
-        include_info_queue
-
-
+        include_info_queue.emplace(std::move(include_info));
+        lk2.~lock_guard();
     }
-
 }
 
 void WalkMan::build_graph() {
+    std::vector<std::string> include_vec;
 
+    while (true) {
+        const std::lock_guard<std::mutex> lk(m2);
+        if (!include_info_queue.empty()) {
+            include_vec = std::move(include_info_queue.front());
+            include_info_queue.pop();
+        } else {
+            if (flag2 == true) {
+                flag3 = true;
+                break;
+            }
+        }
+
+        lk.~lock_guard();
+        
+        // è‡³å°‘è¦åŒ…å«æºæ–‡ä»¶è‡ªå·±çš„æ–‡ä»¶å
+        assert(include_vec.size() >= 1);
+
+        // 1. æ·»åŠ è‡ªèº«èŠ‚ç‚¹
+        Node* self_node = make_node(include_vec.at(0));
+        g.add_node(self_node);
+
+        // 2. æ·»åŠ å¼•ç”¨å…³ç³»
+        for (int n = include_vec.size(), i = 1; i < n; ++i) {
+            g.add_record(self_node, include_vec.at(i));
+        }
+    }
 }
 
+void WalkMan::start() {
+
+}
 
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
-        std::cout << "usage: headerFileAnalysys.exe path/to/project/"
+        std::cout << "usage: headerFileAnalysys.exe path/to/project/" << std::endl;
+        exit(0);
     }
 
     std::string base_dir {argv[1]};

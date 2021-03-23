@@ -7,9 +7,11 @@
 #include <map>
 #include <tuple>
 #include <mutex>
-#include <filesystem>
+#include <atomic>
+#include <filesystem> // wrong file
+//#include <experimental/filesystem>
 
-namespace fs = std::filesystem;
+namespace fs = std::filesystem;;
 
 class Node {
 private:
@@ -46,7 +48,7 @@ public:
     bool add_node(Node* node);
     Node* get_node_by_id(uint32_t id);
     Node* get_node_by_name(const std::string& name);
-    bool add_record(std::string& name, std::string& parent_name);
+    bool add_record(Node* node, std::string& parent_name);
 
 
     bool gen_dot_file();
@@ -63,13 +65,18 @@ static Node* make_node(const std::string& name) {
     return node;
 }
 
-// ¶ÓÁĞa ¶ÓÁĞ b
+// é˜Ÿåˆ—a é˜Ÿåˆ— b
 
-// Ïß³Ì 1 ±éÀúÄ¿Â¼£¬½«ËùÓĞµÄc++ ÎÄ¼şÁĞ³öÀ´£¬·ÅÈë¶ÓÁĞ a
-// Ïß³Ì 2 ´Ó¶ÓÁĞ a ÖĞÈ¡³öÎÄ¼şµÄ¾ø¶ÔÂ·¾¶£¬·ÖÎö³öËùÓĞ°üº¬µÄÎÄ¼ş£¬·ÅÈë¶ÓÁĞ b
-// Ïß³Ì 3 ´Ó¶ÓÁĞ b ÖĞÈ¡³ö°üº¬ÎÄ¼şĞÅÏ¢£¬½øĞĞ·ÖÎö
+// çº¿ç¨‹ 1 éå†ç›®å½•ï¼Œå°†æ‰€æœ‰çš„c++ æ–‡ä»¶åˆ—å‡ºæ¥ï¼Œæ”¾å…¥é˜Ÿåˆ— a
+// çº¿ç¨‹ 2 ä»é˜Ÿåˆ— a ä¸­å–å‡ºæ–‡ä»¶çš„ç»å¯¹è·¯å¾„ï¼Œåˆ†æå‡ºæ‰€æœ‰åŒ…å«çš„æ–‡ä»¶ï¼Œæ”¾å…¥é˜Ÿåˆ— b
+// çº¿ç¨‹ 3 ä»é˜Ÿåˆ— b ä¸­å–å‡ºåŒ…å«æ–‡ä»¶ä¿¡æ¯ï¼Œè¿›è¡Œåˆ†æ
 class WalkMan {
 private:
+    Graph g;
+    std::atomic_bool flag1;
+    std::atomic_bool flag2;
+    std::atomic_bool flag3;
+
     fs::path base_dir;
 
     std::mutex m1;
@@ -78,16 +85,15 @@ private:
     std::queue<fs::path> file_path_queue;
     std::queue<std::vector<std::string>> include_info_queue;
 
-    std::regex;
-
 public:
     WalkMan();
     WalkMan(const std::string& dir);
     ~WalkMan();
 
+    void start();
 
     // thread 1
-    void walk_dir();
+    void walk_dir(fs::path base_dir);
 
     // thread 2
     void analysis_file();
@@ -97,5 +103,4 @@ public:
 
     bool check_extension(fs::path& path);
     std::vector<std::string> get_include_lines(std::string& path);
-
 };
