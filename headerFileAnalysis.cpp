@@ -7,9 +7,10 @@
 #include <queue>
 #include <regex>
 #include <string.h>
+//#include <fstream>
+#include <stdio.h>
 
 #include "headerFileAnalysis.h"
-
 
 Node::Node() :
     node_id(0),
@@ -58,6 +59,10 @@ bool Node::add_child_node(uint32_t id) {
 
 uint32_t Node::get_child_node_count() {
     return child_nodes.size();
+}
+
+std::vector<uint32_t>& Node::get_child_nodes() {
+    return child_nodes;
 }
 
 
@@ -121,7 +126,31 @@ bool Graph::add_record(Node* node, std::string& parent_name) {
 }
 
 bool Graph::gen_dot_file() {
-    
+    FILE* fp = fopen("include_graph.dot", "w");
+    assert(fp != nullptr);
+
+    // gen node define
+    Node* tmp_node = nullptr;
+    fprintf(fp, "// node define\n");
+    for (auto& item : node_map) {
+        tmp_node = item.second;
+        fprintf(fp, "%d[label=%s %d];\n", 
+            item.first, 
+            tmp_node->get_node_name().c_str(), 
+            tmp_node->get_child_node_count());
+    }
+
+    fprintf(fp, "\n\n");
+
+    // gen line
+    for (auto& item : node_map) {
+        Node* node = item.second;
+        uint32_t self_node_id = item.first;
+        
+        for (auto& child_id : node->get_child_nodes()) {
+            fprintf(fp, "%d -> %d;\n", child_id, self_node_id);
+        }
+    }
 }
 
 
@@ -189,7 +218,7 @@ void WalkMan::walk_dir(fs::path base_dir) {
 std::vector<std::string>&& WalkMan::get_include_lines(const fs::path& path) {
     // regex expression from:
     // https://stackoverflow.com/questions/26492513/write-c-regular-expression-to-match-a-include-preprocessing-directive
-    static std::regex re{"^\\s*#\\s*include\\s+[<\"][^>\"]*[>\"]\\s*"}
+    static std::regex re{"^\\s*#\\s*include\\s+[<\"][^>\"]*[>\"]\\s*"};
     std::vector<std::string> include_info{ path.c_str() };
 
     std::ifstream is { path.c_str() };
