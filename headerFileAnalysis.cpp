@@ -7,8 +7,10 @@
 #include <queue>
 #include <regex>
 #include <string.h>
-//#include <fstream>
 #include <stdio.h>
+#include <fstream>
+#include <thread>
+#include <chrono>
 
 #include "headerFileAnalysis.h"
 
@@ -44,6 +46,7 @@ const std::string& Node::get_node_name() {
 bool Node::set_node_id(uint32_t id) {
     assert(id > 0);
     node_id = id;
+    return true;
 }
 
 uint32_t Node::get_node_id() {
@@ -55,6 +58,7 @@ bool Node::add_child_node(uint32_t id) {
     assert(id != node_id);
 
     child_nodes.push_back(id);
+    return true;
 }
 
 uint32_t Node::get_child_node_count() {
@@ -65,7 +69,7 @@ std::vector<uint32_t>& Node::get_child_nodes() {
     return child_nodes;
 }
 
-
+// ------------------------------------------------------
 
 Graph::Graph() :
     node_count(0)
@@ -81,11 +85,14 @@ bool Graph::add_node(Node* node) {
     uint32_t node_id = node->get_node_id();
     
     auto node_iter = node_map.find(node_id);
-    assert(node_iter != node_map.end());
+    assert(node_iter == node_map.end());
     const auto [it, success] = node_map.insert({node_id, node});
     assert(success);
     const auto [it2, success2] = node_name_map.insert({node->get_node_name(), node});
-    assert(success2);
+    if (!success2) {
+        std::cout << "node->get_node_name() " << node->get_node_name() << std::endl;
+    }
+    //assert(success2);
 
     return true;
 }
@@ -131,10 +138,13 @@ bool Graph::gen_dot_file() {
 
     // gen node define
     Node* tmp_node = nullptr;
+    // ratio 图像高:宽
+    // splines=false; 使用直线绘图
+    fprintf(fp, "digraph {\n\n graph [ratio = 0.5];\n");
     fprintf(fp, "// node define\n");
     for (auto& item : node_map) {
         tmp_node = item.second;
-        fprintf(fp, "%d[label=%s %d];\n", 
+        fprintf(fp, "%d[label=\"%s %d\"];\n", 
             item.first, 
             tmp_node->get_node_name().c_str(), 
             tmp_node->get_child_node_count());
@@ -151,19 +161,27 @@ bool Graph::gen_dot_file() {
             fprintf(fp, "%d -> %d;\n", child_id, self_node_id);
         }
     }
+    fprintf(fp, "\n}");
+    fclose(fp);
+    return true;
 }
 
+// ------------------------------------------------------
 
 WalkMan::WalkMan() :
     flag1(false),
     flag2(false),
-    flag3(false)
+    flag3(false),
+    analysisd_file_count(0),
+    walk_file_count(0)
     {}
 
 WalkMan::WalkMan(const std::string& dir) :
     flag1(false),
     flag2(false),
-    flag3(false) {
+    flag3(false),
+    analysisd_file_count(0),
+    walk_file_count(0) {
     base_dir = fs::path(dir);
 }
 
@@ -171,7 +189,7 @@ WalkMan::~WalkMan() {
 
 }
 
-bool WalkMan::check_extension(fs::path& extension) {
+bool WalkMan::check_extension(fs::path extension) {
     const char* c = extension.c_str();
     if (strcmp(c, ".h") == 0
      || strcmp(c, ".c") == 0
@@ -182,7 +200,7 @@ bool WalkMan::check_extension(fs::path& extension) {
         return false;
 }
 
-void WalkMan::walk_dir(fs::path base_dir) {
+void WalkMan::walk_dir() {
     // 使用迭代写法而不是递归写法
     std::queue<fs::path>dirs;
     dirs.push(base_dir);
@@ -204,30 +222,40 @@ void WalkMan::walk_dir(fs::path base_dir) {
             }
         }
 
+        walk_file_count += files.size();
+
         const std::lock_guard<std::mutex> lk(m1);
-        file_path_queue.insert(file_path_queue.end(),
-                                std::make_move_iterator(files.begin()),
-                                std::make_move_iterator(files.end()));
+        for (auto& elem : files) {
+            file_path_queue.push(std::move(elem));
+        }
         files.clear();
+        
     }
     // set finish flag
-    flag1 = true;
+    flag1.store(true);
+    std::cout << "thread walk_dir exit..." << std::endl;
 }
 
 
-std::vector<std::string>&& WalkMan::get_include_lines(const fs::path& path) {
+std::vector<std::string> WalkMan::get_include_lines(const fs::path& path) {
     // regex expression from:
     // https://stackoverflow.com/questions/26492513/write-c-regular-expression-to-match-a-include-preprocessing-directive
     static std::regex re{"^\\s*#\\s*include\\s+[<\"][^>\"]*[>\"]\\s*"};
-    std::vector<std::string> include_info{ path.c_str() };
+    //static std::regex re_filename{"\"(.*?)\"|(<.*?>)"};
+    static std::regex re_filename{"[<\"](.*?)[>\"]"};
+    std::vector<std::string> include_info{ path.filename() };
 
     std::ifstream is { path.c_str() };
     std::string s;
     for (size_t line{1}; std::getline(is, s); ++line) {
         if (std::regex_search(begin(s), end(s), re)) {
-            include_info.emplace_back(std::move(s));
+            std::smatch matchRes;
+            std::regex_search(s, matchRes, re_filename);
+            assert(matchRes[1].str().size() > 0);
+            include_info.emplace_back(std::move(matchRes[1].str()));
         }
     }
+    assert(include_info.size() > 0);
     return include_info;
 }
 
@@ -242,9 +270,11 @@ void WalkMan::analysis_file() {
             path = std::move(file_path_queue.front());
             file_path_queue.pop();
         } else {
-            if (flag1 == true) {
-                flag2 = true;
+            if (flag1.load() == true) {
+                flag2.store(true);
                 break;
+            } else {
+                continue;
             }
                 
         }
@@ -252,11 +282,15 @@ void WalkMan::analysis_file() {
 
         // vector 第一个元素是源文件的名字，其他元素是这个源文件引用的头文件
         std::vector<std::string> include_info = get_include_lines(path);
+        assert(include_info.size() > 0);
 
         const std::lock_guard<std::mutex> lk2(m2);
-        include_info_queue.emplace(std::move(include_info));
+        include_info_queue.push(include_info);
         lk2.~lock_guard();
+
+        analysisd_file_count += 1;
     }
+    std::cout << "thread analysis_file exit..." << std::endl;
 }
 
 void WalkMan::build_graph() {
@@ -265,12 +299,14 @@ void WalkMan::build_graph() {
     while (true) {
         const std::lock_guard<std::mutex> lk(m2);
         if (!include_info_queue.empty()) {
-            include_vec = std::move(include_info_queue.front());
+            include_vec = include_info_queue.front();
             include_info_queue.pop();
         } else {
-            if (flag2 == true) {
-                flag3 = true;
+            if (flag2.load() == true) {
+                flag3.store(true);
                 break;
+            } else {
+                continue;
             }
         }
 
@@ -288,10 +324,32 @@ void WalkMan::build_graph() {
             g.add_record(self_node, include_vec.at(i));
         }
     }
+    std::cout << "thread build_graph exit..." << std::endl;
 }
 
 void WalkMan::start() {
+    std::thread t1(&WalkMan::walk_dir, this);
+    std::thread t2(&WalkMan::analysis_file, this);
+    std::thread t3(&WalkMan::build_graph, this);
 
+    while (flag3.load() != true) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::cout << "tick..." << std::endl;
+        std::cout << "walk_file_count: " << walk_file_count.load() << std::endl;
+        std::cout << "analysisd_file_count: " << analysisd_file_count.load() << std::endl;
+
+        std::string f1 = flag1.load() == true ? "true" : "false";
+        std::string f2 = flag2.load() == true ? "true" : "false";
+        std::string f3 = flag3.load() == true ? "true" : "false";
+
+        std::cout << "flag1:" << f1 << std::endl;
+        std::cout << "flag2:" << f2 << std::endl;
+        std::cout << "flag3:" << f3 << std::endl;
+    }
+
+    g.gen_dot_file();
+
+    exit(0);
 }
 
 
@@ -304,7 +362,9 @@ int main(int argc, char* argv[]) {
     std::string base_dir {argv[1]};
 
     WalkMan walkMan(base_dir);
+    walkMan.start();
 
+    return 0;
 }
 
 

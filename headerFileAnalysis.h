@@ -24,13 +24,14 @@ public:
     Node(uint32_t id, const std::string& name);
     ~Node();
 
-    std::vector<uint32_t>& get_child_nodes();
     bool set_node_name(const std::string& name);
     const std::string& get_node_name();
     bool set_node_id(uint32_t id);
     uint32_t get_node_id();
     bool add_child_node(uint32_t id);
-    uint32_t get_child_node_count();    
+    uint32_t get_child_node_count();
+    std::vector<uint32_t>& get_child_nodes();
+
     
 };
 
@@ -50,8 +51,6 @@ public:
     Node* get_node_by_id(uint32_t id);
     Node* get_node_by_name(const std::string& name);
     bool add_record(Node* node, std::string& parent_name);
-
-
     bool gen_dot_file();
 };
 
@@ -78,6 +77,9 @@ private:
     std::atomic_bool flag2;
     std::atomic_bool flag3;
 
+    std::atomic_int walk_file_count;
+    std::atomic_int analysisd_file_count;
+
     fs::path base_dir;
 
     std::mutex m1;
@@ -94,7 +96,7 @@ public:
     void start();
 
     // thread 1
-    void walk_dir(fs::path base_dir);
+    void walk_dir();
 
     // thread 2
     void analysis_file();
@@ -102,6 +104,6 @@ public:
     // thread 3
     void build_graph();
 
-    bool check_extension(fs::path& path);
-    std::vector<std::string> get_include_lines(std::string& path);
+    bool check_extension(fs::path path);
+    std::vector<std::string> get_include_lines(const fs::path& path);
 };
