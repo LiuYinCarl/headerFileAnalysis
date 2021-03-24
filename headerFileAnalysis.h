@@ -24,6 +24,7 @@ public:
     Node(uint32_t id, const std::string& name);
     ~Node();
 
+    std::vector<uint32_t>& get_child_nodes();
     bool set_node_name(const std::string& name);
     const std::string& get_node_name();
     bool set_node_id(uint32_t id);
