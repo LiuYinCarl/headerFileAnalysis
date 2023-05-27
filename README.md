@@ -35,10 +35,10 @@ don't forget add graphviz to your system path.
 3. in VSCode, open a dot file, then you can find a button on upper left of the window.
 click it, you can see a picture like 
 
-[lua_include_graph.svg](./lua_include_graph.svg)
+![lua_include_graph.svg](./lua_include_graph.svg)
 
-[ocaml_include_graph.svg](./ocaml_include_graph.svg)
+![ocaml_include_graph.svg](./ocaml_include_graph.svg)
 
-[cpython_include_graph.svg](./cpython_include_graph.svg)
+![cpython_include_graph.svg](./cpython_include_graph.svg)
 
 
