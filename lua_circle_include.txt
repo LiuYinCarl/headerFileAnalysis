@@ -1,0 +1,21 @@
+circle include: lstate.h
+lua.h -> lmem.h -> lzio.h -> lstate.h -> ltm.h
+
+circle include: lstate.h
+lmem.h -> lzio.h -> lstate.h -> ltm.h
+
+circle include: ltm.h
+llimits.h -> lobject.h -> ltm.h -> lstate.h
+
+circle include: lstate.h
+lzio.h -> lstate.h -> ltm.h
+
+circle include: ltm.h
+lobject.h -> ltm.h -> lstate.h
+
+circle include: lstate.h
+lstate.h -> ltm.h
+
+source files number: 68
+header files number: 28
+graph  node  number: 68
