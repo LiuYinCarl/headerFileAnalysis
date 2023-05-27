@@ -18,7 +18,6 @@ Node::Node() :
 Node::Node(uint32_t id, const std::string& name) {
   assert(id > 0);
   assert(name.size() > 0);
-
   node_id = id;
   node_name = name;
 }
@@ -226,10 +225,10 @@ WalkMan::~WalkMan() {}
 
 bool WalkMan::is_source_code(fs::path extension) {
   const char* ext = extension.c_str();
-  if (strcmp(ext, ".h") == 0
-      || strcmp(ext, ".c") == 0
-      || strcmp(ext, ".cpp") == 0
-      || strcmp(ext, ".hpp") == 0) {
+  if (strcmp(ext, ".h") == 0 ||
+      strcmp(ext, ".c") == 0 ||
+      strcmp(ext, ".cpp") == 0 ||
+      strcmp(ext, ".hpp") == 0) {
     return true;
   }
   return false;
