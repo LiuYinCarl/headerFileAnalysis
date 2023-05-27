@@ -1,4 +1,3 @@
-#include <_types/_uint32_t.h>
 #include <cassert>
 #include <cstring>
 #include <iostream>
