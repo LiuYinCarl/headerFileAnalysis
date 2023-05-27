@@ -83,7 +83,7 @@ uint32_t Graph::get_node_count() {
 
 bool Graph::add_node(Node* node) {
     uint32_t node_id = node->get_node_id();
-    
+
     auto node_iter = node_map.find(node_id);
     assert(node_iter == node_map.end());
     const auto [it, success] = node_map.insert({node_id, node});
@@ -118,7 +118,7 @@ Node* Graph::get_node_by_name(const std::string& name) {
 bool Graph::add_record(Node* node, std::string& parent_name) {
     assert(node != nullptr);
     assert(parent_name.size() > 0);
-    
+
     // 1. find parent node. if parent node not exist, create it
     Node* parent_node = get_node_by_name(parent_name);
     if (parent_node == nullptr) {
@@ -128,7 +128,7 @@ bool Graph::add_record(Node* node, std::string& parent_name) {
 
     // 2. insert node into it's parent node
     parent_node->add_child_node(node->get_node_id());
-    
+
     return true;
 }
 
@@ -144,9 +144,9 @@ bool Graph::gen_dot_file() {
     fprintf(fp, "// node define\n");
     for (auto& item : node_map) {
         tmp_node = item.second;
-        fprintf(fp, "%d[label=\"%s %d\"];\n", 
-            item.first, 
-            tmp_node->get_node_name().c_str(), 
+        fprintf(fp, "%d[label=\"%s %d\"];\n",
+            item.first,
+            tmp_node->get_node_name().c_str(),
             tmp_node->get_child_node_count());
     }
 
@@ -156,7 +156,7 @@ bool Graph::gen_dot_file() {
     for (auto& item : node_map) {
         Node* node = item.second;
         uint32_t self_node_id = item.first;
-        
+
         for (auto& child_id : node->get_child_nodes()) {
             fprintf(fp, "%d -> %d;\n", child_id, self_node_id);
         }
@@ -197,14 +197,14 @@ bool WalkMan::check_extension(fs::path extension) {
      || strcmp(c, ".hpp") == 0) {
         return true;
     }
-        return false;
+    return false;
 }
 
 void WalkMan::walk_dir() {
     // 使用迭代写法而不是递归写法
     std::queue<fs::path>dirs;
     dirs.push(base_dir);
-    
+
     std::vector<fs::path> files;
     fs::path cur_dir;
 
@@ -229,7 +229,6 @@ void WalkMan::walk_dir() {
             file_path_queue.push(std::move(elem));
         }
         files.clear();
-        
     }
     // set finish flag
     flag1.store(true);
@@ -276,7 +275,7 @@ void WalkMan::analysis_file() {
             } else {
                 continue;
             }
-                
+
         }
         lk.~lock_guard();
 
@@ -311,7 +310,7 @@ void WalkMan::build_graph() {
         }
 
         lk.~lock_guard();
-        
+
         // 至少要包含源文件自己的文件名
         assert(include_vec.size() >= 1);
 
@@ -366,5 +365,3 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
-
-

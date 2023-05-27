@@ -31,8 +31,6 @@ public:
     bool add_child_node(uint32_t id);
     uint32_t get_child_node_count();
     std::vector<uint32_t>& get_child_nodes();
-
-    
 };
 
 
@@ -67,7 +65,7 @@ static Node* make_node(const std::string& name) {
 
 // 队列a 队列 b
 
-// 线程 1 遍历目录，将所有的c++ 文件列出来，放入队列 a
+// 线程 1 遍历目录，将所有的C++ 文件列出来，放入队列 a
 // 线程 2 从队列 a 中取出文件的绝对路径，分析出所有包含的文件，放入队列 b
 // 线程 3 从队列 b 中取出包含文件信息，进行分析
 class WalkMan {
