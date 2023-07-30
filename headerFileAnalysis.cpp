@@ -50,7 +50,10 @@ uint32_t Node::get_node_id() {
 
 bool Node::add_child_node(uint32_t id) {
   assert(id > 0);
-  assert(id != node_id);
+  // this check is necessary, otherwise there will have 'fake' circle include.
+  // for example, Meta's folly code base has a Windows.h,
+  // and in this file include another Windows.h which is the Header file of Windows System.
+  if (id == node_id) return false;
 
   child_nodes.push_back(id);
   return true;
