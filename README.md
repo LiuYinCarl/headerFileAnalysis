@@ -6,7 +6,7 @@ C/C++ include files analysis
 Linux 下使用
 ``` bash
 
-# Compiler 
+# Compiler
 bash build.sh
 # 或者使用 make
 make
@@ -33,7 +33,17 @@ don't forget add graphviz to your system path.
 2. install VScode plugin  Graphviz Preview(author: EFanZh)
 
 3. in VSCode, open a dot file, then you can find a button on upper left of the window.
-click it, you can see a picture like 
+click it, you can see a picture like
+
+### use command line to generate output file
+
+```bash
+# pdf format
+$ dot -Tpdf -o output.pdf input.dot
+# svg format
+$ dot -Tsvg -o output.svg input.dot
+```
+mor output format see [Graphviz Output Formats Document](https://graphviz.org/docs/outputs/)
 
 ![lua_include_graph.svg](./lua_include_graph.svg)
 
